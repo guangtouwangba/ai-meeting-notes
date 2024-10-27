@@ -1,31 +1,41 @@
 package main
 
 import (
-	application "github.com/guangtouwangba/ai-meeting-notes/internal/application/meeting"
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/guangtouwangba/ai-meeting-notes/configs"
+	application "github.com/guangtouwangba/ai-meeting-notes/internal/application/meeting"
 	"github.com/guangtouwangba/ai-meeting-notes/internal/domain/meeting"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
 func main() {
+	// 加载配置
+	config, err := configs.LoadConfig()
+	if err != nil {
+		log.Fatalf("无法加载配置: %v", err)
+	}
+	log.Println("配置加载成功")
+
 	// 设置数据库连接
-	dsn := "user:password@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
-	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(mysql.Open(config.GetDSN()), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("无法连接到数据库: %v", err)
 	}
+	log.Println("数据库连接成功")
 
 	// 自动迁移数据库结构
 	err = db.AutoMigrate(&meeting.Meeting{})
 	if err != nil {
 		log.Fatalf("自动迁移失败: %v", err)
 	}
+	log.Println("数据库结构自动迁移成功")
 
 	// 创建repository实例
 	meetingRepo := meeting.NewGormRepository(db)
+	log.Println("Meeting repository 创建成功")
 
 	// 创建一个默认的Gin引擎
 	r := gin.Default()
@@ -44,8 +54,10 @@ func main() {
 	r.GET("/meetings/:id", meetingHandler.GetMeeting)
 	r.PUT("/meetings/:id", meetingHandler.UpdateMeeting)
 	r.DELETE("/meetings/:id", meetingHandler.DeleteMeeting)
+	log.Println("所有路由注册成功")
 
 	// 启动服务器
+	log.Println("正在启动服务器...")
 	if err := r.Run(":8080"); err != nil {
 		log.Fatalf("启动服务器失败: %v", err)
 	}

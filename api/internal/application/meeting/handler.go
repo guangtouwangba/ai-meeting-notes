@@ -1,10 +1,8 @@
 package application
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
-	"github.com/guangtouwangba/ai-meeting-notes/domain/meeting"
+	"github.com/guangtouwangba/ai-meeting-notes/internal/domain/meeting"
 )
 
 type Handler struct {
