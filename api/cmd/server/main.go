@@ -1,13 +1,13 @@
 package main
 
 import (
+	application "github.com/guangtouwangba/ai-meeting-notes/internal/application/meeting"
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/guangtouwangba/ai-meeting-notes/internal/domain/meeting"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"guangtouwangba/ai-meeting-notes/api/domain/meeting"
-	"guangtouwangba/ai-meeting-notes/api/meeting"
 )
 
 func main() {
@@ -38,7 +38,7 @@ func main() {
 	})
 
 	// 注册会议相关的路由
-	meetingHandler := meeting.NewHandler(meetingRepo)
+	meetingHandler := application.NewHandler(meetingRepo)
 	r.POST("/meetings", meetingHandler.CreateMeeting)
 	r.GET("/meetings", meetingHandler.GetMeetings)
 	r.GET("/meetings/:id", meetingHandler.GetMeeting)

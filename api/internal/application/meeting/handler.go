@@ -1,70 +1,36 @@
-package meeting
+package application
 
 import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/guangtouwangba/ai-meeting-notes/domain/meeting"
 )
 
-type Meeting struct {
-	ID        string `json:"id"`
-	Title     string `json:"title"`
-	StartTime string `json:"start_time"`
-	EndTime   string `json:"end_time"`
+type Handler struct {
+	repo meeting.Repository
 }
 
-var meetings = []Meeting{}
-
-func CreateMeeting(c *gin.Context) {
-	var newMeeting Meeting
-	if err := c.ShouldBindJSON(&newMeeting); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	meetings = append(meetings, newMeeting)
-	c.JSON(http.StatusCreated, newMeeting)
+func NewHandler(repo meeting.Repository) *Handler {
+	return &Handler{repo: repo}
 }
 
-func GetMeetings(c *gin.Context) {
-	c.JSON(http.StatusOK, meetings)
+func (h *Handler) CreateMeeting(c *gin.Context) {
+	// 实现创建会议的逻辑
 }
 
-func GetMeeting(c *gin.Context) {
-	id := c.Param("id")
-	for _, meeting := range meetings {
-		if meeting.ID == id {
-			c.JSON(http.StatusOK, meeting)
-			return
-		}
-	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "会议未找到"})
+func (h *Handler) GetMeetings(c *gin.Context) {
+	// 实现获取所有会议的逻辑
 }
 
-func UpdateMeeting(c *gin.Context) {
-	id := c.Param("id")
-	var updatedMeeting Meeting
-	if err := c.ShouldBindJSON(&updatedMeeting); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	for i, meeting := range meetings {
-		if meeting.ID == id {
-			meetings[i] = updatedMeeting
-			c.JSON(http.StatusOK, updatedMeeting)
-			return
-		}
-	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "会议未找到"})
+func (h *Handler) GetMeeting(c *gin.Context) {
+	// 实现获取单个会议的逻辑
 }
 
-func DeleteMeeting(c *gin.Context) {
-	id := c.Param("id")
-	for i, meeting := range meetings {
-		if meeting.ID == id {
-			meetings = append(meetings[:i], meetings[i+1:]...)
-			c.JSON(http.StatusOK, gin.H{"message": "会议已删除"})
-			return
-		}
-	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "会议未找到"})
+func (h *Handler) UpdateMeeting(c *gin.Context) {
+	// 实现更新会议的逻辑
+}
+
+func (h *Handler) DeleteMeeting(c *gin.Context) {
+	// 实现删除会议的逻辑
 }
