@@ -1,17 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Box,
-  Flex,
-  VStack,
-  HStack,
-  Heading,
-  Text,
-  Button,
-  Progress,
-  IconButton,
-  Textarea,
-} from '@chakra-ui/react';
-import { ArrowBackIcon, ChevronDownIcon } from '@chakra-ui/icons';
+import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import AudioRecorder from './AudioRecorder';
 
 interface RecordingViewProps {
@@ -28,6 +16,7 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -45,6 +34,9 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
     } else {
       stopMicrophoneVisualization();
     }
+    return () => {
+      stopMicrophoneVisualization();
+    };
   }, [isRecording]);
 
   const formatTime = (seconds: number) => {
@@ -73,7 +65,7 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
           const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
           setMicLevel(average);
         }
-        requestAnimationFrame(updateMicLevel);
+        animationFrameRef.current = requestAnimationFrame(updateMicLevel);
       };
       updateMicLevel();
     } catch (error) {
@@ -82,12 +74,19 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
   };
 
   const stopMicrophoneVisualization = () => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
     }
-    if (audioContextRef.current) {
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
+      audioContextRef.current = null;
     }
+    analyserRef.current = null;
   };
 
   const handleStartStop = () => {
@@ -104,57 +103,66 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
   };
 
   return (
-    <Flex h="100vh">
+    <div className="flex h-screen">
       {/* 左侧控制栏 */}
-      <Box w="250px" bg="gray.100" p={4}>
-        <VStack spacing={4} align="stretch">
-          <IconButton
-            aria-label="Back"
-            icon={<ArrowBackIcon />}
+      <div className="w-64 bg-gray-100 p-4">
+        <div className="space-y-4">
+          <button
+            className="p-2 rounded-full hover:bg-gray-200 transition duration-200"
             onClick={onBack}
-          />
-          <Heading size="md">Recording Controls:</Heading>
-          <Button
-            size="lg"
+          >
+            <ArrowLeftIcon className="h-6 w-6 text-gray-600" />
+          </button>
+          <h2 className="text-lg font-semibold">录音控制：</h2>
+          <button
+            className={`w-full py-2 px-4 rounded-md text-white transition duration-200 ${
+              isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
+            }`}
             onClick={handleStartStop}
-            colorScheme={isRecording ? "red" : "green"}
           >
-            {isRecording ? "Stop" : "Start"}
-          </Button>
-          <Button
-            size="lg"
+            {isRecording ? "停止" : "开始"}
+          </button>
+          <button
+            className={`w-full py-2 px-4 rounded-md transition duration-200 ${
+              isRecording
+                ? 'bg-blue-500 text-white hover:bg-blue-600'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
             onClick={handlePause}
-            isDisabled={!isRecording}
+            disabled={!isRecording}
           >
-            {isPaused ? "Resume" : "Pause"}
-          </Button>
-        </VStack>
-      </Box>
+            {isPaused ? "继续" : "暂停"}
+          </button>
+        </div>
+      </div>
 
       {/* 主内容区域 */}
-      <Box flex={1} p={8}>
-        <VStack spacing={8} align="stretch">
-          <Heading>Recording in Progress</Heading>
-          <Text fontSize="6xl" fontWeight="bold" textAlign="center">
+      <div className="flex-1 p-8">
+        <div className="space-y-8">
+          <h1 className="text-3xl font-bold">正在录音</h1>
+          <div className="text-6xl font-bold text-center">
             {formatTime(recordingTime)}
-          </Text>
-          <Box>
-            <Text mb={2}>Microphone Input Level:</Text>
-            <Progress value={micLevel} max={255} size="lg" colorScheme="green" />
-          </Box>
-          <Box>
-            <Text mb={2} fontSize="xl">Live Transcription:</Text>
-            <Textarea
+          </div>
+          <div>
+            <p className="mb-2">麦克风输入：</p>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div
+                className="bg-green-500 h-2.5 rounded-full"
+                style={{ width: `${(micLevel / 255) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+          <div>
+            <p className="text-xl mb-2">实时转录：</p>
+            <textarea
               value={transcription}
               readOnly
-              minHeight="200px"
-              fontSize="lg"
-              bg="gray.50"
+              className="w-full h-48 p-2 bg-gray-50 rounded-md resize-none"
             />
-          </Box>
-        </VStack>
-      </Box>
-    </Flex>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

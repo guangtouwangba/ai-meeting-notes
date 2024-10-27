@@ -1,0 +1,10 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* 你可以在这里添加任何自定义的全局样式 */
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* 如果需要，可以在这里添加更多自定义样式 */
