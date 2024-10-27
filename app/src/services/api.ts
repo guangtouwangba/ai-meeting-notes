@@ -1,5 +1,8 @@
 import { Meeting } from '../models/Meeting';
 
+// 从环境变量或配置文件中获取后端 host
+const API_HOST = import.meta.env.VITE_API_HOST || 'http://localhost:3000';
+
 let meetingCount = 0; // 用于跟踪会议数量
 
 export const fetchMeetings = (): Meeting[] => {
@@ -17,36 +20,76 @@ export const createMeetingAPI = (meetings: Meeting[]): Meeting => {
   return { id: new Date().toISOString(), ...otherMeetingData };
 };
 
-// 新增的函数，用于转录音频
-export const transcribeAudio = async (audioBlob: Blob, apiKey: string): Promise<string> => {
+// 使用文件传输的转录接口
+export const transcribeAudioFile = async (audioFile: File): Promise<string> => {
   try {
-    const wavBlob = await convertToWav(audioBlob);
     const formData = new FormData();
-    formData.append('file', wavBlob, 'audio.wav');
-    formData.append('model', 'whisper-1');
+    formData.append('audio', audioFile);
 
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    const response = await fetch(`${API_HOST}/api/transcribe/file`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-      },
       body: formData,
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API request failed: ${response.status} ${errorText}`);
+      throw new Error(`API request failed: ${response.status}`);
     }
 
     const data = await response.json();
-    return data.text; // 返回转录文本
+    return data.transcription;
   } catch (error) {
     console.error('转录错误:', error);
-    throw error; // 抛出错误以便在调用处处理
+    throw error;
   }
 };
 
-// 辅助函数：将音频 Blob 转换为 WAV 格式
+// 使用 blob 传输的转录接口
+export const transcribeAudioBlob = async (audioBlob: Blob): Promise<string> => {
+  try {
+    const response = await fetch(`${API_HOST}/api/transcribe/blob`, {
+      method: 'POST',
+      body: audioBlob,
+      headers: {
+        'Content-Type': audioBlob.type,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.transcription;
+  } catch (error) {
+    console.error('转录错误:', error);
+    throw error;
+  }
+};
+
+// 实时转换字幕的接口
+export const realTimeTranscribe = async (audioChunk: Blob): Promise<string> => {
+  try {
+    const response = await fetch(`${API_HOST}/api/transcribe/realtime`, {
+      method: 'POST',
+      body: audioChunk,
+      headers: {
+        'Content-Type': audioChunk.type,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.transcription;
+  } catch (error) {
+    console.error('实时转录错误:', error);
+    throw error;
+  }
+};
+
+// 保留原有的辅助函数，以防需要在客户端进行音频处理
 const convertToWav = async (audioBlob: Blob): Promise<Blob> => {
   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
   const arrayBuffer = await audioBlob.arrayBuffer();
