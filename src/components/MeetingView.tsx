@@ -26,6 +26,10 @@ interface MeetingViewProps {
 }
 
 const MeetingView: React.FC<MeetingViewProps> = ({ meeting, onUpdateMeeting }) => {
+  if (!meeting) {
+    return <div>请选择一个会议</div>; // 或者返回一个加载状态
+  }
+
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
   const [notes, setNotes] = useState('');
@@ -37,16 +41,6 @@ const MeetingView: React.FC<MeetingViewProps> = ({ meeting, onUpdateMeeting }) =
       setNotes(meeting.notes);
     }
   }, [meeting]);
-
-  if (!meeting) {
-    return (
-      <Box p={8} textAlign="center">
-        <Text fontSize="xl" color="gray.500">
-          Select or create a meeting to get started
-        </Text>
-      </Box>
-    );
-  }
 
   const handleTranscriptionUpdate = (newText: string) => {
     onUpdateMeeting({
@@ -90,6 +84,16 @@ const MeetingView: React.FC<MeetingViewProps> = ({ meeting, onUpdateMeeting }) =
       ...meeting,
       summary: "Meeting summary will be generated here using AI...",
     });
+  };
+
+  const handleStopTranscript = async () => {
+    try {
+      // 停止转录的逻辑
+      // 例如，调用 API 或更新状态
+    } catch (error) {
+      console.error('停止转录时出错:', error);
+      // 显示错误消息
+    }
   };
 
   return (

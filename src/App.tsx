@@ -1,63 +1,102 @@
 import React, { useState } from 'react';
-import { 
+import {
   ChakraProvider,
-  Grid,
-  GridItem,
-  useToast
+  Box,
+  Flex,
+  VStack,
+  Heading,
+  Button,
+  List,
+  ListItem,
+  Text,
+  Image,
 } from '@chakra-ui/react';
-import Sidebar from './components/Sidebar';
-import MeetingView from './components/MeetingView';
-import { Meeting } from './types';
+import { Meeting } from './models/Meeting';
+import { createMeeting, getMeetings } from './services/meetingService';
+import RecordingView from './components/RecordingView';
+import PlaybackView from './components/PlaybackView';
 
 const App: React.FC = () => {
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>(getMeetings());
   const [activeMeetingId, setActiveMeetingId] = useState<string | null>(null);
-  const toast = useToast();
+  const [isRecording, setIsRecording] = useState(false);
+  const [isPlayback, setIsPlayback] = useState(false);
+  const [currentMeeting, setCurrentMeeting] = useState<Meeting | null>(null);
 
   const handleCreateMeeting = () => {
-    const newMeeting: Meeting = {
-      id: Date.now().toString(),
-      title: `Meeting ${meetings.length + 1}`,
-      date: new Date(),
-      transcription: '',
-      notes: '',
-      audioUrl: null,
-      summary: null
-    };
+    const newMeeting = createMeeting(meetings);
     setMeetings([...meetings, newMeeting]);
     setActiveMeetingId(newMeeting.id);
   };
 
-  const handleUpdateMeeting = (updatedMeeting: Meeting) => {
-    setMeetings(meetings.map(m => 
-      m.id === updatedMeeting.id ? updatedMeeting : m
-    ));
+  const handleStartRecording = () => {
+    setIsRecording(true);
   };
 
-  const activeMeeting = meetings.find(m => m.id === activeMeetingId);
+  const handleBackFromRecording = () => {
+    setIsRecording(false);
+  };
+
+  const handleStartPlayback = (meeting: Meeting) => {
+    setCurrentMeeting(meeting);
+    setIsPlayback(true);
+  };
+
+  const handleBackFromPlayback = () => {
+    setIsPlayback(false);
+    setCurrentMeeting(null);
+  };
 
   return (
     <ChakraProvider>
-      <Grid
-        templateColumns="300px 1fr"
-        h="100vh"
-        gap={0}
-      >
-        <GridItem borderRight="1px" borderColor="gray.200" bg="gray.50">
-          <Sidebar 
-            meetings={meetings}
-            activeMeetingId={activeMeetingId}
-            onSelectMeeting={setActiveMeetingId}
-            onCreateMeeting={handleCreateMeeting}
-          />
-        </GridItem>
-        <GridItem overflow="auto">
-          <MeetingView
-            meeting={activeMeeting}
-            onUpdateMeeting={handleUpdateMeeting}
-          />
-        </GridItem>
-      </Grid>
+      {isPlayback && currentMeeting ? (
+        <PlaybackView
+          onBack={handleBackFromPlayback}
+          recordingTitle={currentMeeting.title}
+          audioSrc={currentMeeting.audioUrl}
+          transcription={currentMeeting.transcription}
+        />
+      ) : isRecording ? (
+        <RecordingView onBack={handleBackFromRecording} />
+      ) : (
+        <Flex h="100vh">
+          {/* 左侧边栏 */}
+          <Box w="250px" bg="gray.100" p={4}>
+            <VStack spacing={4} align="stretch">
+              <Image src="/path/to/your/logo.png" alt="App Logo" />
+              <Button onClick={handleCreateMeeting}>New Meeting</Button>
+              <Button>Recordings</Button>
+              <Button>Settings</Button>
+            </VStack>
+          </Box>
+
+          {/* 主内容区域 */}
+          <Box flex={1} p={8}>
+            <VStack spacing={8} align="stretch">
+              <Heading>Welcome to AI Meeting Assistant</Heading>
+              
+              <Box>
+                <Text fontSize="xl" mb={4}>Quick Start:</Text>
+                <Flex>
+                  <Button colorScheme="blue" mr={4} onClick={handleStartRecording}>Start New Recording</Button>
+                  <Button>Open Recent</Button>
+                </Flex>
+              </Box>
+
+              <Box>
+                <Text fontSize="xl" mb={4}>Recent Recordings:</Text>
+                <List spacing={3}>
+                  {meetings.slice(0, 3).map((meeting) => (
+                    <ListItem key={meeting.id}>
+                      {meeting.title} ({new Date(meeting.date).toLocaleDateString()}, Duration: N/A)
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            </VStack>
+          </Box>
+        </Flex>
+      )}
     </ChakraProvider>
   );
 };
