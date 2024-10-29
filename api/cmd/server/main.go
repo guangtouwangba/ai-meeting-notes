@@ -1,13 +1,13 @@
 package main
 
 import (
+	"gorm.io/driver/postgres"
 	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/guangtouwangba/ai-meeting-notes/configs"
 	application "github.com/guangtouwangba/ai-meeting-notes/internal/application/meeting"
 	"github.com/guangtouwangba/ai-meeting-notes/internal/domain/meeting"
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
 
@@ -19,8 +19,10 @@ func main() {
 	}
 	log.Println("配置加载成功")
 
+	log.Println("DSN: ", config.GetDSN())
+
 	// 设置数据库连接
-	db, err := gorm.Open(mysql.Open(config.GetDSN()), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(config.GetDSN()), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("无法连接到数据库: %v", err)
 	}

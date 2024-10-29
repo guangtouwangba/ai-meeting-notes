@@ -64,8 +64,21 @@ func LoadConfig() (config Config, err error) {
 }
 
 func (c *Config) GetDSN() string {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",
-		c.DBUser, c.DBPassword, c.DBHost, c.DBPort, c.DBName)
-	log.Printf("Generated DSN: %s", dsn)
+	// PostgreSQL 的 DSN 格式
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Shanghai",
+		c.DBHost,
+		c.DBUser,
+		c.DBPassword,
+		c.DBName,
+		c.DBPort,
+	)
+	// 出于安全考虑，不打印包含密码的完整 DSN
+	safeDsn := fmt.Sprintf("host=%s user=%s dbname=%s port=%s",
+		c.DBHost,
+		c.DBUser,
+		c.DBName,
+		c.DBPort,
+	)
+	log.Printf("Connecting to database with DSN: %s", safeDsn)
 	return dsn
 }
