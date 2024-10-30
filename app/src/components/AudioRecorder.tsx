@@ -9,9 +9,12 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onTranscriptionUpdate }) 
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const meetingData = useState<any>(null)[0]; // 修正为只获取状态值
 
   const startRecording = async () => {
+    console.log('Meeting Data:', meetingData);
     try {
+      console.log('meetingData:', meetingData);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
       const mimeTypes = ['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav'];

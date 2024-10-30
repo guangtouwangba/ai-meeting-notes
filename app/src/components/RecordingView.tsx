@@ -1,12 +1,36 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import AudioRecorder from './AudioRecorder';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface RecordingViewProps {
   onBack: () => void;
 }
 
+interface MeetingData {
+  title: string;
+  primaryLanguage: string;
+  supportedLanguages: string[];
+  audioSource: string;
+  aiSettings: {
+    realTimeTranslation: boolean;
+    speakerIdentification: boolean;
+    technicalTermRecognition: boolean;
+  };
+}
+
 const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const meetingData = location.state?.meetingData as MeetingData;
+
+  // 如果没有会议数据，重定向回新建会议页面
+  useEffect(() => {
+    if (!meetingData) {
+      navigate('/new-meeting');
+    }
+  }, [meetingData, navigate]);
+
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -114,6 +138,14 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
             <ArrowLeftIcon className="h-6 w-6 text-gray-600" />
           </button>
           <h2 className="text-lg font-semibold">录音控制：</h2>
+          {meetingData && (
+            <div className="mb-4">
+              <h3 className="text-sm font-medium text-gray-600">会议信息：</h3>
+              <p className="text-sm">{meetingData.title}</p>
+              <p className="text-sm">主要语言：{meetingData.primaryLanguage}</p>
+              <p className="text-sm">音频源：{meetingData.audioSource}</p>
+            </div>
+          )}
           <button
             className={`w-full py-2 px-4 rounded-md text-white transition duration-200 ${
               isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
@@ -139,7 +171,9 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
       {/* 主内容区域 */}
       <div className="flex-1 p-8">
         <div className="space-y-8">
-          <h1 className="text-3xl font-bold">正在录音</h1>
+          <h1 className="text-3xl font-bold">
+            {meetingData ? `录制: ${meetingData.title}` : '正在录音'}
+          </h1>
           <div className="text-6xl font-bold text-center">
             {formatTime(recordingTime)}
           </div>

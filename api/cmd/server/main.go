@@ -1,6 +1,7 @@
 package main
 
 import (
+	infrastructure "github.com/guangtouwangba/ai-meeting-notes/internal/infrastructure/persistence"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -34,7 +35,7 @@ func main() {
 	log.Println("数据库结构自动迁移成功")
 
 	// 创建repository实例
-	meetingRepo := meeting.NewGormRepository(db)
+	meetingRepo := infrastructure.NewMeetingRepository(db)
 	log.Println("Meeting repository 创建成功")
 
 	// 创建一个默认的Gin引擎

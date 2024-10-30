@@ -2,6 +2,7 @@ package application
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -13,10 +14,17 @@ type MeetingHandler struct {
 }
 
 type CreateMeetingRequest struct {
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
+	Title               string              `json:"title"`
+	Description         string              `json:"description"`
+	TargetLang          string              `json:"target_lang"`
+	SourceLang          string              `json:"source_lang"`
+	StartTime           time.Time           `json:"start_time"`
+	EndTime             time.Time           `json:"end_time"`
+	Speaker             string              `json:"speaker"`
+	TranscriberSettings TranscriberSettings `json:"transcriber_settings"`
+}
+
+type TranscriberSettings struct {
 }
 
 func NewMeetingHandler(repo meeting.Repository) *MeetingHandler {
@@ -43,12 +51,26 @@ func (h *MeetingHandler) CreateMeeting(c *gin.Context) {
 }
 
 func (h *MeetingHandler) GetMeetings(c *gin.Context) {
-	meetings, err := h.repo.GetAll(c)
+	// 获取分页参数，默认第1页，每页20条
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
+
+	// 验证参数
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	// 获取分页数据
+	result, err := h.repo.GetPaginated(c, page, pageSize)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, meetings)
+
+	c.JSON(http.StatusOK, result)
 }
 
 func (h *MeetingHandler) GetMeeting(c *gin.Context) {

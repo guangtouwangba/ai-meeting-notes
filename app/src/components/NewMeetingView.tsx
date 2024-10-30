@@ -1,41 +1,63 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ArrowLeftIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/solid';
+import { createMeeting } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 interface NewMeetingViewProps {
   onBack: () => void;
   onSave: (meetingData: any) => void;
-  onStart: (meetingData: any) => void;
 }
 
-const NewMeetingView: React.FC<NewMeetingViewProps> = ({ onBack, onSave, onStart }) => {
+const NewMeetingView: React.FC<NewMeetingViewProps> = ({ onBack, onSave }) => {
   const [title, setTitle] = useState('');
-  const [primaryLanguage, setPrimaryLanguage] = useState('English');
+  const [description, setDescription] = useState('');
+  const [primaryLanguage, setPrimaryLanguage] = useState('');
+  const [targetLanguage, setTargetLanguage] = useState('');
   const [supportedLanguages, setSupportedLanguages] = useState<string[]>([]);
-  const [audioSource, setAudioSource] = useState('internal');
+  const [audioSource, setAudioSource] = useState('');
+  const [speaker, setSpeaker] = useState('');
+  
   const [realTimeTranslation, setRealTimeTranslation] = useState(false);
   const [speakerIdentification, setSpeakerIdentification] = useState(false);
   const [technicalTermRecognition, setTechnicalTermRecognition] = useState(false);
-  const [showOptionalDetails, setShowOptionalDetails] = useState(false);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const languages = ['English', 'Spanish', 'Chinese', 'French', 'German', 'Japanese'];
 
-  useEffect(() => {
-    // Auto-save logic here
-  }, [title, primaryLanguage, supportedLanguages, audioSource, realTimeTranslation, speakerIdentification, technicalTermRecognition]);
+  const navigate = useNavigate();
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setIsLoading(true);
+    setError(null);
+
     const meetingData = {
       title,
-      primaryLanguage,
-      supportedLanguages,
-      audioSource,
-      aiSettings: {
+      description,
+      target_lang: targetLanguage || 'en',
+      source_lang: primaryLanguage || 'en',
+      start_time: new Date().toISOString(),
+      end_time: new Date().toISOString(),
+      speaker,
+      transcriber_settings: {
         realTimeTranslation,
         speakerIdentification,
         technicalTermRecognition,
       },
     };
-    onSave(meetingData);
+
+    console.log('meetingData:', meetingData);
+
+    try {
+      await onSave(meetingData);
+      navigate('/');
+    } catch (error) {
+      console.error('保存失败:', error);
+      setError(error instanceof Error ? error.message : '保存失败');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleStart = () => {
@@ -53,6 +75,12 @@ const NewMeetingView: React.FC<NewMeetingViewProps> = ({ onBack, onSave, onStart
     onStart(meetingData);
   };
 
+  const onStart = (meetingData: any) => {
+    console.log('onStart:', meetingData);
+    // 跳转至录音页面，并携带参数
+    navigate('/recording', { state: { meetingData } });
+  };
+
   const toggleSupportedLanguage = (lang: string) => {
     setSupportedLanguages(prev => 
       prev.includes(lang) ? prev.filter(l => l !== lang) : [...prev, lang]
@@ -67,10 +95,22 @@ const NewMeetingView: React.FC<NewMeetingViewProps> = ({ onBack, onSave, onStart
           返回
         </button>
         <h1 className="text-2xl font-bold">新建 AI 辅助会议</h1>
-        <button onClick={handleSave} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" title="保存会议设置">
-          保存
+        <button 
+          onClick={handleSave} 
+          className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={isLoading}
+        >
+          {isLoading ? '保存中...' : '保存'}
         </button>
       </header>
+
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">错误！</strong>
+          <span className="block sm:inline"> {error}</span>
+        </div>
+      )}
+
       <main className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-3xl mx-auto">
           <div className="mb-8">
@@ -104,23 +144,17 @@ const NewMeetingView: React.FC<NewMeetingViewProps> = ({ onBack, onSave, onStart
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">支持的语言</label>
-              <div className="mt-2 grid grid-cols-3 gap-2">
+              <label htmlFor="targetLanguage" className="block text-sm font-medium text-gray-700">目标语言</label>
+              <select
+                id="targetLanguage"
+                value={targetLanguage}
+                onChange={(e) => setTargetLanguage(e.target.value)}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+              >
                 {languages.map(lang => (
-                  <label key={lang} className="inline-flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={supportedLanguages.includes(lang)}
-                      onChange={() => toggleSupportedLanguage(lang)}
-                      className="form-checkbox h-5 w-5 text-blue-600"
-                    />
-                    <span className="ml-2">{lang}</span>
-                  </label>
+                  <option key={lang} value={lang}>{lang}</option>
                 ))}
-              </div>
-              <button type="button" className="mt-2 text-sm text-blue-500 hover:text-blue-600">
-                + 添加更多语言
-              </button>
+              </select>
             </div>
             <div>
               <label htmlFor="audioSource" className="block text-sm font-medium text-gray-700">音频源</label>
@@ -166,20 +200,6 @@ const NewMeetingView: React.FC<NewMeetingViewProps> = ({ onBack, onSave, onStart
                   <span className="ml-2">技术术语识别</span>
                 </label>
               </div>
-            </div>
-            <div>
-              <button
-                type="button"
-                onClick={() => setShowOptionalDetails(!showOptionalDetails)}
-                className="text-blue-500 hover:text-blue-600"
-              >
-                {showOptionalDetails ? '- 隐藏可选会议详情' : '+ 添加日期、时间、参与者'}
-              </button>
-              {showOptionalDetails && (
-                <div className="mt-2 space-y-4">
-                  {/* 添加日期、时间和参与者的输入字段 */}
-                </div>
-              )}
             </div>
           </form>
         </div>

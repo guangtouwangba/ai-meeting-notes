@@ -10,16 +10,6 @@ export const fetchMeetings = (): Meeting[] => {
   return []; // 返回一个空数组作为示例
 };
 
-export const createMeetingAPI = (meetings: Meeting[]): Meeting => {
-  meetingCount = meetings.length + 1; // 更新会议数量
-  const otherMeetingData = {
-    title: `New Meeting ${meetingCount}`, // 动态生成标题
-    date: new Date(), // 设置当前时间为会议日期
-    participants: [], // 初始化参与者为空数组
-  };
-  return { id: new Date().toISOString(), ...otherMeetingData };
-};
-
 // 使用文件传输的转录接口
 export const transcribeAudioFile = async (audioFile: File): Promise<string> => {
   try {
@@ -137,5 +127,110 @@ const floatTo16BitPCM = (output: DataView, offset: number, input: Float32Array) 
   for (let i = 0; i < input.length; i++, offset += 2) {
     const s = Math.max(-1, Math.min(1, input[i]));
     output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+};
+
+interface TranscriberSettings {
+  // 可以根据需要添加具体的设置项
+  realTimeTranslation?: boolean;
+  speakerIdentification?: boolean;
+  technicalTermRecognition?: boolean;
+}
+
+export interface CreateMeetingRequest {
+  title: string;
+  description: string;
+  target_lang: string;
+  source_lang: string;
+  start_time: string;  // ISO 格式的时间字符串
+  end_time: string;    // ISO 格式的时间字符串
+  speaker: string;
+  transcriber_settings: TranscriberSettings;
+}
+
+const API_BASE_URL = '/api'; // 使用相对路径
+
+export const createMeeting = async (meetingData: CreateMeetingRequest): Promise<any> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/meetings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(meetingData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorData}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('创建会议失败:', error);
+    throw error;
+  }
+};
+
+export interface Meeting {
+  id: string;
+  title: string;
+  description: string;
+  target_lang: string;
+  source_lang: string;
+  start_time: string;
+  end_time: string;
+  speaker: string;
+  transcriber_settings: TranscriberSettings;
+}
+
+export interface PaginatedMeetings {
+  total: number;
+  page: number;
+  page_size: number;
+  data: Meeting[];
+}
+
+export const getMeetings = async (page: number = 1, pageSize: number = 20): Promise<PaginatedMeetings> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/meetings?page=${page}&page_size=${pageSize}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorData}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('获取会议列表失败:', error);
+    throw error;
+  }
+};
+
+export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
+  try {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'audio.wav');
+
+    const response = await fetch(`${API_BASE_URL}/transcribe`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorData}`);
+    }
+
+    const data = await response.json();
+    return data.text;
+  } catch (error) {
+    console.error('音频转录失败:', error);
+    throw error;
   }
 };

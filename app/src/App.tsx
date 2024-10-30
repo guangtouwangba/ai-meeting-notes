@@ -1,180 +1,122 @@
-import React, { useState } from 'react';
-import { Meeting } from './models/Meeting';
-import { createMeeting, getMeetings } from './services/meetingService';
+import React, { useState, useEffect } from 'react';
+import { ChakraProvider, Box } from '@chakra-ui/react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import NewMeetingView from './components/NewMeetingView';
 import RecordingView from './components/RecordingView';
 import PlaybackView from './components/PlaybackView';
-import Sidebar from './components/Sidebar';
-import { BellIcon, MicrophoneIcon, MagnifyingGlassIcon, UserCircleIcon } from '@heroicons/react/24/solid';
-import NewMeetingView from './components/NewMeetingView';
+import { getMeetings, Meeting } from './services/api';
+import AudioRecorder from './components/AudioRecorder';
+import { createMeetingAPI } from './services/meetingService';
+import MeetingView from './components/MeetingView';
 
-const App: React.FC = () => {
-  const [meetings, setMeetings] = useState<Meeting[]>(getMeetings());
-  const [activeMeetingId, setActiveMeetingId] = useState<string | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPlayback, setIsPlayback] = useState(false);
-  const [currentMeeting, setCurrentMeeting] = useState<Meeting | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isNewMeeting, setIsNewMeeting] = useState(false);
+// AppContent 组件接收 props
+interface AppContentProps {
+  onStartPlayback: (meeting: Meeting) => void;
+  onViewMeeting: (meeting: Meeting) => void;
+}
+
+const AppContent: React.FC<AppContentProps> = ({ onStartPlayback, onViewMeeting }) => {
+  const navigate = useNavigate();
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalMeetings, setTotalMeetings] = useState(0);
+  const [pageSize] = useState(20);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleCreateMeeting = () => {
-    setIsNewMeeting(true);
+    navigate('/new-meeting');
   };
 
-  const handleStartRecording = () => {
-    setIsRecording(true);
+  useEffect(() => {
+    fetchMeetings();
+  }, []);
+
+  const fetchMeetings = async (page: number = currentPage) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await getMeetings(page, pageSize);
+      console.log('获取到的会议列表:', response);
+      setMeetings(response.data);
+      setTotalMeetings(response.total);
+      setCurrentPage(response.page);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '获取会议列表失败');
+      console.error('获取会议列表失败:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleBackFromRecording = () => {
-    setIsRecording(false);
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    fetchMeetings(newPage);
   };
 
+  // 使用传入的 onStartPlayback
   const handleStartPlayback = (meeting: Meeting) => {
-    setCurrentMeeting(meeting);
-    setIsPlayback(true);
+    onStartPlayback(meeting);
+    navigate('/playback');
   };
 
-  const handleBackFromPlayback = () => {
-    setIsPlayback(false);
-    setCurrentMeeting(null);
-  };
-
-  const handleQuickRecord = () => {
-    // Implement quick record functionality
-  };
-
-  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    // Implement search functionality
-  };
-
-  const handleSaveMeeting = (meetingData: any) => {
-    // 实现保存会议数据的逻辑
-    console.log('Saving meeting:', meetingData);
-  };
-
-  const handleStartMeeting = (meetingData: any) => {
-    // 实现开始会议的逻辑
-    console.log('Starting meeting:', meetingData);
-    setIsRecording(true);
-    setIsNewMeeting(false);
+  const handleSaveMeeting = async (meetingData: any) => {
+    try {
+      await createMeetingAPI(meetingData);
+      navigate('/');
+      // 可选：重新获取会议列表
+      // await fetchMeetings();
+    } catch (error) {
+      console.error('创建会议失败:', error);
+      throw error; // 将错误抛回给 NewMeetingView 组件处理
+    }
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        meetings={meetings}
-        activeMeetingId={activeMeetingId}
-        onSelectMeeting={(id) => {
-          const meeting = meetings.find(m => m.id === id);
-          if (meeting) handleStartPlayback(meeting);
-        }}
-        onCreateMeeting={handleCreateMeeting}
-      />
-      <main className="flex-1 overflow-y-auto bg-gray-100">
-        <div className="container mx-auto p-8">
-          {/* <div className="flex justify-between items-center mb-8">
-            <form onSubmit={handleSearch} className="flex-1 max-w-lg">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="搜索会议和录音..."
-                  className="w-full pl-10 pr-4 py-2 rounded-full border focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              </div>
-            </form>
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleQuickRecord}
-                className="flex items-center space-x-2 bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600 transition duration-200"
-                title="快速录音"
-              >
-                <MicrophoneIcon className="h-5 w-5" />
-                <span>快速录音</span>
-              </button>
-              <button className="relative" title="通知">
-                <BellIcon className="h-6 w-6 text-gray-600" />
-                <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
-              </button>
-              <button className="relative" title="用户资料">
-                <UserCircleIcon className="h-8 w-8 text-gray-600" />
-              </button>
-            </div>
-          </div> */}
+    <ChakraProvider>
+      <Box p={8}>
+        <div className="max-w-4xl mx-auto">
+          <header className="mb-8">
+            <h1 className="text-3xl font-bold mb-4">AI Meeting Assistant</h1>
+            <button
+              onClick={handleCreateMeeting}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              创建新会议
+            </button>
+          </header>
 
-          {isNewMeeting ? (
-            <NewMeetingView
-              onBack={() => setIsNewMeeting(false)}
-              onSave={handleSaveMeeting}
-              onStart={handleStartMeeting}
-            />
-          ) : isPlayback && currentMeeting ? (
-            <PlaybackView
-              onBack={handleBackFromPlayback}
-              recordingTitle={currentMeeting.title}
-              audioSrc={currentMeeting.audioUrl}
-              transcription={currentMeeting.transcription}
-            />
-          ) : isRecording ? (
-            <RecordingView onBack={handleBackFromRecording} />
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+              <strong className="font-bold">错误！</strong>
+              <span className="block sm:inline"> {error}</span>
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="text-center py-4">加载中...</div>
           ) : (
-            <>
-              <h1 className="text-3xl font-bold mb-8">AI 会议助手</h1>
-              <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-4">快速操作：</h2>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={handleCreateMeeting}
-                    className="bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition duration-200"
-                    title="创建新会议"
-                  >
-                    新建会议
-                  </button>
-                  <button
-                    className="bg-gray-200 text-gray-700 py-2 px-4 rounded hover:bg-gray-300 transition duration-200"
-                    title="打开最近的录音"
-                  >
-                    打开最近
-                  </button>
-                </div>
-              </div>
-              <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-4">即将进行的会议：</h2>
+            <div>
+              <h2 className="text-xl font-semibold mb-4">最近会议：</h2>
+              {meetings.length === 0 ? (
+                <p className="text-gray-500">暂无会议记录</p>
+              ) : (
                 <ul className="space-y-3">
-                  {meetings.slice(0, 2).map((meeting) => (
+                  {meetings.map((meeting) => (
                     <li
                       key={meeting.id}
                       className="bg-white p-3 rounded shadow hover:bg-gray-50 transition duration-200 group"
                     >
                       <div className="flex justify-between items-center">
-                        <span>{meeting.title} ({new Date(meeting.date).toLocaleDateString()}, {new Date(meeting.date).toLocaleTimeString()})</span>
-                        <button
-                          className="hidden group-hover:block bg-green-500 text-white py-1 px-3 rounded hover:bg-green-600 transition duration-200"
-                          onClick={() => handleStartPlayback(meeting)}
+                        <span 
+                          className="cursor-pointer"
+                          onClick={() => onViewMeeting(meeting)}
                         >
-                          ���始
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-                <a href="#" className="text-blue-500 hover:underline mt-2 inline-block">查看全部</a>
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold mb-4">最近录音：</h2>
-                <ul className="space-y-3">
-                  {meetings.slice(0, 2).map((meeting) => (
-                    <li
-                      key={meeting.id}
-                      className="bg-white p-3 rounded shadow hover:bg-gray-50 transition duration-200 group"
-                    >
-                      <div className="flex justify-between items-center">
-                        <span>{meeting.title} ({new Date(meeting.date).toLocaleDateString()}, 时长：未知)</span>
+                          {meeting.title} ({new Date(meeting.start_time).toLocaleDateString()})
+                        </span>
                         <button
                           className="hidden group-hover:block bg-blue-500 text-white py-1 px-3 rounded hover:bg-blue-600 transition duration-200"
-                          onClick={() => handleStartPlayback(meeting)}
+                          onClick={() => onStartPlayback(meeting)}
                         >
                           播放
                         </button>
@@ -182,13 +124,142 @@ const App: React.FC = () => {
                     </li>
                   ))}
                 </ul>
-                <a href="#" className="text-blue-500 hover:underline mt-2 inline-block">查看全部</a>
-              </div>
-            </>
+              )}
+              <a href="#" className="text-blue-500 hover:underline mt-2 inline-block">
+                查看全部
+              </a>
+              {!isLoading && meetings.length > 0 && (
+                <div className="mt-4">
+                  <div className="flex justify-between items-center">
+                    <span>
+                      共 {totalMeetings} 条记录，第 {currentPage} 页
+                    </span>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1 border rounded disabled:opacity-50"
+                      >
+                        上一页
+                      </button>
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage * pageSize >= totalMeetings}
+                        className="px-3 py-1 border rounded disabled:opacity-50"
+                      >
+                        下一页
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
-      </main>
-    </div>
+      </Box>
+    </ChakraProvider>
+  );
+};
+
+// 包含路由逻辑的组件
+const AppRoutes: React.FC = () => {
+  const [currentMeeting, setCurrentMeeting] = useState<Meeting | null>(null);
+  const navigate = useNavigate();
+
+  const handleStartPlayback = (meeting: Meeting) => {
+    setCurrentMeeting(meeting);
+    navigate('/playback');
+  };
+
+  const handleViewMeeting = (meeting: Meeting) => {
+    setCurrentMeeting(meeting);
+    navigate('/meeting');
+  };
+
+  const handleBack = () => {
+    navigate('/');
+  };
+
+  const handleSaveMeeting = async (meetingData: any) => {
+    try {
+      await createMeetingAPI(meetingData);
+      navigate('/');
+    } catch (error) {
+      console.error('创建会议失败:', error);
+      throw error;
+    }
+  };
+
+  return (
+    <Routes>
+      <Route 
+        path="/" 
+        element={
+          <AppContent 
+            onStartPlayback={handleStartPlayback}
+            onViewMeeting={handleViewMeeting}
+          />
+        } 
+      />
+      <Route 
+        path="/meeting" 
+        element={
+          currentMeeting ? (
+            <MeetingView
+              meeting={currentMeeting}
+              onBack={handleBack}
+            />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } 
+      />
+      <Route 
+        path="/new-meeting" 
+        element={
+          <NewMeetingView 
+            onBack={handleBack} 
+            onSave={handleSaveMeeting}
+          />
+        } 
+      />
+      <Route 
+        path="/recording" 
+        element={<RecordingView onBack={handleBack} />} 
+      />
+      <Route 
+        path="/audio-recorder" 
+        element={<AudioRecorder />} 
+      />
+      <Route 
+        path="/playback" 
+        element={
+          currentMeeting ? (
+            <PlaybackView
+              meeting={currentMeeting}
+              onBack={handleBack}
+            />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } 
+      />
+      <Route 
+        path="/meeting/:id"
+        element={<MeetingView onBack={handleBack} />}
+      />
+    </Routes>
+  );
+};
+
+// 主 App 组件
+const App: React.FC = () => {
+  return (
+    <Router>
+      <ChakraProvider>
+        <AppRoutes />
+      </ChakraProvider>
+    </Router>
   );
 };
 

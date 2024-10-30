@@ -1,8 +1,8 @@
 import { Meeting } from '../models/Meeting';
-import { createMeetingAPI, fetchMeetings } from './api'; // 导入 API 函数
+import { createMeeting, fetchMeetings, CreateMeetingRequest } from './api'; // 导入 API 函数
 
-export const createMeeting = (meetings: Meeting[]): Meeting => {
-  return createMeetingAPI(meetings); // 调用 API 函数
+export const createMeetingAPI = async (meetings: CreateMeetingRequest): Promise<Meeting> => {
+  return await createMeeting(meetings); // 调用 API 函数
 };
 
 export const getMeetings = (): Meeting[] => {
