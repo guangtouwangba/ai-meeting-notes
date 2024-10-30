@@ -1,13 +1,13 @@
 package main
 
 import (
-	"gorm.io/driver/postgres"
 	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/guangtouwangba/ai-meeting-notes/configs"
-	application "github.com/guangtouwangba/ai-meeting-notes/internal/application/meeting"
 	"github.com/guangtouwangba/ai-meeting-notes/internal/domain/meeting"
+	"github.com/guangtouwangba/ai-meeting-notes/internal/interfaces/http"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -18,8 +18,6 @@ func main() {
 		log.Fatalf("无法加载配置: %v", err)
 	}
 	log.Println("配置加载成功")
-
-	log.Println("DSN: ", config.GetDSN())
 
 	// 设置数据库连接
 	db, err := gorm.Open(postgres.Open(config.GetDSN()), &gorm.Config{})
@@ -50,12 +48,8 @@ func main() {
 	})
 
 	// 注册会议相关的路由
-	meetingHandler := application.NewHandler(meetingRepo)
-	r.POST("/meetings", meetingHandler.CreateMeeting)
-	r.GET("/meetings", meetingHandler.GetMeetings)
-	r.GET("/meetings/:id", meetingHandler.GetMeeting)
-	r.PUT("/meetings/:id", meetingHandler.UpdateMeeting)
-	r.DELETE("/meetings/:id", meetingHandler.DeleteMeeting)
+	meetingHandler := http.NewMeetingHandler(meetingRepo)
+	meetingHandler.RegisterRoutes(r)
 	log.Println("所有路由注册成功")
 
 	// 启动服务器

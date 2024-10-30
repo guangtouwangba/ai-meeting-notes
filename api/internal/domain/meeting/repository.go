@@ -3,6 +3,7 @@ package meeting
 import (
 	"context"
 	"errors"
+	"github.com/google/uuid"
 
 	"gorm.io/gorm"
 )
@@ -19,7 +20,15 @@ func NewGormRepository(db *gorm.DB) *GormRepository {
 
 // Create 创建一个新的会议
 func (r *GormRepository) Create(ctx context.Context, meeting *Meeting) error {
+	if meeting.ID == "" {
+		meeting.ID = NewID()
+	}
 	return r.db.WithContext(ctx).Create(meeting).Error
+}
+
+func NewID() string {
+	id, _ := uuid.NewUUID()
+	return id.String()
 }
 
 // GetByID 根据ID获取会议

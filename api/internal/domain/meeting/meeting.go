@@ -7,10 +7,11 @@ import (
 
 // Meeting 代表一个会议实体
 type Meeting struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
+	ID          string    `json:"id"`
+	Title       string    `json:"title"`
+	StartTime   time.Time `json:"start_time"`
+	Description string    `json:"description"`
+	EndTime     time.Time `json:"end_time"`
 }
 
 // Repository 定义了会议仓储的接口
