@@ -2,6 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import AudioRecorder from './AudioRecorder';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { 
+  initWebSocket, 
+  startRecording, 
+  stopRecording, 
+  togglePauseRecording, 
+  sendAudioData, 
+  closeWebSocket 
+} from '../services/api';
 
 interface RecordingViewProps {
   onBack: () => void;
@@ -36,11 +44,43 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [transcription, setTranscription] = useState('');
   const [micLevel, setMicLevel] = useState(0);
+  const [wsReady, setWsReady] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+
+  // 初始化 WebSocket 连接
+  useEffect(() => {
+    const connectWebSocket = async () => {
+      try {
+        await initWebSocket({
+          onRecordingStarted: (data) => {
+            console.log('Recording started:', data);
+          },
+          onAudioProcessed: (data) => {
+            console.log('Audio processed:', data);
+          },
+          onRecordingStopped: (data) => {
+            console.log('Recording stopped:', data);
+          },
+          onTranscriptionUpdate: (text) => {
+            handleTranscriptionUpdate(text);
+          }
+        });
+        setWsReady(true);
+      } catch (error) {
+        console.error('WebSocket connection failed:', error);
+      }
+    };
+
+    connectWebSocket();
+
+    return () => {
+      closeWebSocket();
+    };
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -75,6 +115,7 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
 
   const startMicrophoneVisualization = async () => {
     try {
+      console.log("startMicrophoneVisualization");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
       audioContextRef.current = new AudioContext();
@@ -98,6 +139,7 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
   };
 
   const stopMicrophoneVisualization = () => {
+    console.log("stopMicrophoneVisualization");
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
@@ -114,11 +156,24 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
   };
 
   const handleStartStop = () => {
+    console.log("handleStartStop");
+    if (!wsReady) {
+      console.error('WebSocket not ready');
+      return;
+    }
+
+    if (!isRecording) {
+      startRecording(meetingData);
+    } else {
+      stopRecording();
+    }
+    
     setIsRecording(!isRecording);
     setIsPaused(false);
   };
 
   const handlePause = () => {
+    togglePauseRecording(isPaused);
     setIsPaused(!isPaused);
   };
 
@@ -151,6 +206,7 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
               isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
             }`}
             onClick={handleStartStop}
+            disabled={!wsReady}
           >
             {isRecording ? "停止" : "开始"}
           </button>

@@ -8,6 +8,7 @@ import (
 	"github.com/guangtouwangba/ai-meeting-notes/configs"
 	"github.com/guangtouwangba/ai-meeting-notes/internal/domain/meeting"
 	"github.com/guangtouwangba/ai-meeting-notes/internal/interfaces/http"
+	"github.com/guangtouwangba/ai-meeting-notes/internal/interfaces/websocket"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -41,12 +42,28 @@ func main() {
 	// 创建一个默认的Gin引擎
 	r := gin.Default()
 
+	// 设置CORS
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
+
 	// 定义一个简单的路由
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "欢迎使用Gin HTTP服务器!",
 		})
 	})
+
+	// 注册WebSocket路由
+	r.GET("/ws/recording", websocket.HandleWebSocket)
 
 	// 注册会议相关的路由
 	meetingHandler := http.NewMeetingHandler(meetingRepo)

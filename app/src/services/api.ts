@@ -167,7 +167,7 @@ export const createMeeting = async (meetingData: CreateMeetingRequest): Promise<
 
     return await response.json();
   } catch (error) {
-    console.error('创建会议失败:', error);
+    console.error('创建会失败:', error);
     throw error;
   }
 };
@@ -232,5 +232,138 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
   } catch (error) {
     console.error('音频转录失败:', error);
     throw error;
+  }
+};
+
+// WebSocket 事件处理器类型
+export interface WebSocketHandlers {
+  onRecordingStarted?: (data: any) => void;
+  onAudioProcessed?: (data: any) => void;
+  onRecordingStopped?: (data: any) => void;
+  onTranscriptionUpdate?: (text: string) => void;
+}
+
+let socket: WebSocket | null = null;
+let isConnecting = false;
+let messageQueue: Array<{ type: string; data: any }> = [];
+
+// 初始化 WebSocket 连接
+export const initWebSocket = (handlers: WebSocketHandlers): Promise<WebSocket> => {
+  return new Promise((resolve, reject) => {
+    if (socket?.readyState === WebSocket.OPEN) {
+      console.log('WebSocket connection already exists');
+      resolve(socket);
+      return;
+    }
+
+    if (isConnecting) {
+      console.log('WebSocket connection in progress');
+      // 等待连接完成
+      const checkConnection = setInterval(() => {
+        if (socket?.readyState === WebSocket.OPEN) {
+          clearInterval(checkConnection);
+          resolve(socket);
+        }
+      }, 100);
+      return;
+    }
+
+    isConnecting = true;
+    socket = new WebSocket('ws://localhost:8080/ws/recording');
+
+    socket.onopen = () => {
+      console.log('WebSocket connected');
+      isConnecting = false;
+      // 处理队列中的消息
+      while (messageQueue.length > 0) {
+        const msg = messageQueue.shift();
+        if (msg) sendMessage(msg.type, msg.data);
+      }
+      resolve(socket);
+    };
+
+    socket.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      console.log('Received message:', message);
+      
+      switch (message.type) {
+        case 'recording_started':
+          handlers.onRecordingStarted?.(message.data);
+          break;
+        case 'audio_processed':
+          handlers.onAudioProcessed?.(message.data);
+          if (message.data.transcript) {
+            handlers.onTranscriptionUpdate?.(message.data.transcript);
+          }
+          break;
+        case 'recording_stopped':
+          handlers.onRecordingStopped?.(message.data);
+          break;
+      }
+    };
+
+    socket.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      isConnecting = false;
+      reject(error);
+    };
+
+    socket.onclose = () => {
+      console.log('WebSocket disconnected');
+      socket = null;
+      isConnecting = false;
+    };
+  });
+};
+
+// 发送消息的通用函数
+const sendMessage = (type: string, data: any) => {
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    console.log('WebSocket not ready, queueing message:', { type, data });
+    messageQueue.push({ type, data });
+    return;
+  }
+
+  const message = { type, data };
+  socket.send(JSON.stringify(message));
+  console.log('Sent message:', message);
+};
+
+// 发送开始录音消息
+export const startRecording = (meetingData: any) => {
+  sendMessage('start_recording', {
+    meeting_id: meetingData?.id || 'temp_meeting_id',
+    title: meetingData?.title || 'Untitled Meeting',
+    settings: meetingData?.aiSettings || {}
+  });
+};
+
+// 发送停止录音消息
+export const stopRecording = () => {
+  sendMessage('stop_recording', {});
+};
+
+// 发送暂停/恢复录音消息
+export const togglePauseRecording = (isPaused: boolean) => {
+  sendMessage(isPaused ? 'resume_recording' : 'pause_recording', {});
+};
+
+// 发送音频数据
+export const sendAudioData = (audioData: Blob) => {
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    const base64Audio = reader.result as string;
+    sendMessage('audio_data', {
+      audio: base64Audio.split(',')[1]
+    });
+  };
+  reader.readAsDataURL(audioData);
+};
+
+// 关闭 WebSocket 连接
+export const closeWebSocket = () => {
+  if (socket) {
+    socket.close();
+    socket = null;
   }
 };

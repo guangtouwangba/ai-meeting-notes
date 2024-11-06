@@ -10,12 +10,13 @@ import (
 )
 
 type Config struct {
-	DBDriver   string `mapstructure:"DB_DRIVER"`
-	DBHost     string `mapstructure:"DB_HOST"`
-	DBPort     string `mapstructure:"DB_PORT"`
-	DBUser     string `mapstructure:"DB_USER"`
-	DBPassword string `mapstructure:"DB_PASSWORD"`
-	DBName     string `mapstructure:"DB_NAME"`
+	DBDriver    string `mapstructure:"DB_DRIVER"`
+	DBHost      string `mapstructure:"DB_HOST"`
+	DBPort      string `mapstructure:"DB_PORT"`
+	DBUser      string `mapstructure:"DB_USER"`
+	DBPassword  string `mapstructure:"DB_PASSWORD"`
+	DBName      string `mapstructure:"DB_NAME"`
+	StorageType string `mapstructure:"STORAGE_TYPE"`
 }
 
 func LoadConfig() (config Config, err error) {
@@ -50,6 +51,7 @@ func LoadConfig() (config Config, err error) {
 	log.Printf("DBUser: %s", config.DBUser)
 	log.Printf("DBPassword: %s", "********") // 出于安全考虑,不打印实际密码
 	log.Printf("DBName: %s", config.DBName)
+	log.Printf("StorageType: %s", config.StorageType)
 
 	// 打印 Viper 中的所有键值对
 	for _, key := range viper.AllKeys() {
@@ -58,6 +60,11 @@ func LoadConfig() (config Config, err error) {
 		} else {
 			log.Printf("%s: ********", key)
 		}
+	}
+
+	// 设置默认的StorageType
+	if config.StorageType == "" {
+		config.StorageType = "local"
 	}
 
 	return
@@ -81,4 +88,12 @@ func (c *Config) GetDSN() string {
 	)
 	log.Printf("Connecting to database with DSN: %s", safeDsn)
 	return dsn
+}
+
+func GetConfig() Config {
+	config, err := LoadConfig()
+	if err != nil {
+		log.Fatalf("无法加载配置: %v", err)
+	}
+	return config
 }
