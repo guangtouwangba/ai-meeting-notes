@@ -62,8 +62,8 @@ func main() {
 		})
 	})
 
-	// 注册WebSocket路由
-	r.GET("/ws/recording", websocket.HandleWebSocket)
+	// 注册WebSocket路由，传入数据库连接
+	r.GET("/ws/recording", websocket.HandleWebSocket(db))
 
 	// 注册会议相关的路由
 	meetingHandler := http.NewMeetingHandler(meetingRepo)
