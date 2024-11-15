@@ -1,15 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
-import AudioRecorder from './AudioRecorder';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-  initWebSocket, 
-  startRecording, 
-  stopRecording, 
-  togglePauseRecording, 
-  sendAudioData, 
-  closeWebSocket 
-} from '../services/api';
 
 interface RecordingViewProps {
   onBack: () => void;
@@ -32,77 +23,20 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
   const navigate = useNavigate();
   const meetingData = location.state?.meetingData as MeetingData;
 
-  // 如果没有会议数据，重定向回新建会议页面
-  useEffect(() => {
-    if (!meetingData) {
-      navigate('/new-meeting');
-    }
-  }, [meetingData, navigate]);
-
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [transcription, setTranscription] = useState('');
   const [micLevel, setMicLevel] = useState(0);
-  const [wsReady, setWsReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  // 初始化 WebSocket 连接
-  useEffect(() => {
-    const connectWebSocket = async () => {
-      try {
-        await initWebSocket({
-          onRecordingStarted: (data) => {
-            console.log('Recording started:', data);
-          },
-          onAudioProcessed: (data) => {
-            console.log('Audio processed:', data);
-          },
-          onRecordingStopped: (data) => {
-            console.log('Recording stopped:', data);
-          },
-          onTranscriptionUpdate: (text) => {
-            handleTranscriptionUpdate(text);
-          }
-        });
-        setWsReady(true);
-      } catch (error) {
-        console.error('WebSocket connection failed:', error);
-      }
-    };
-
-    connectWebSocket();
-
-    return () => {
-      closeWebSocket();
-    };
-  }, []);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isRecording && !isPaused) {
-      interval = setInterval(() => {
-        setRecordingTime((prevTime) => prevTime + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isRecording, isPaused]);
-
-  useEffect(() => {
-    if (isRecording) {
-      startMicrophoneVisualization();
-    } else {
-      stopMicrophoneVisualization();
-    }
-    return () => {
-      stopMicrophoneVisualization();
-    };
-  }, [isRecording]);
-
+  // 格式化时间的辅助函数
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -113,76 +47,123 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
       .join(":");
   };
 
-  const startMicrophoneVisualization = async () => {
+  // 处理录音时间
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isRecording && !isPaused) {
+      interval = setInterval(() => {
+        setRecordingTime((prevTime) => prevTime + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isRecording, isPaused]);
+
+  const startRecording = async () => {
     try {
-      console.log("startMicrophoneVisualization");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
+      
+      // 设置音频可视化
       audioContextRef.current = new AudioContext();
       analyserRef.current = audioContextRef.current.createAnalyser();
       const source = audioContextRef.current.createMediaStreamSource(stream);
       source.connect(analyserRef.current);
 
+      // 创建 MediaRecorder
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          setAudioChunks(chunks => [...chunks, event.data]);
+        }
+      };
+
+      // 开始录音
+      mediaRecorder.start(1000); // 每秒收集一次数据
+      setIsRecording(true);
+
+      // 开始音频可视化
       const updateMicLevel = () => {
         if (analyserRef.current) {
           const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
           analyserRef.current.getByteFrequencyData(dataArray);
           const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
           setMicLevel(average);
+          animationFrameRef.current = requestAnimationFrame(updateMicLevel);
         }
-        animationFrameRef.current = requestAnimationFrame(updateMicLevel);
       };
       updateMicLevel();
+
     } catch (error) {
-      console.error('Error accessing microphone:', error);
+      console.error('Error starting recording:', error);
+      setError('无法访问麦克风，请检查权限设置');
     }
   };
 
-  const stopMicrophoneVisualization = () => {
-    console.log("stopMicrophoneVisualization");
+  const stopRecording = () => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+    }
+
+    // 停止所有音频处理
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
     }
+
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
-      mediaStreamRef.current = null;
     }
-    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+
+    if (audioContextRef.current) {
       audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-    analyserRef.current = null;
-  };
-
-  const handleStartStop = () => {
-    console.log("handleStartStop");
-    if (!wsReady) {
-      console.error('WebSocket not ready');
-      return;
     }
 
-    if (!isRecording) {
-      startRecording(meetingData);
-    } else {
-      stopRecording();
-    }
-    
-    setIsRecording(!isRecording);
+    setIsRecording(false);
     setIsPaused(false);
   };
 
   const handlePause = () => {
-    togglePauseRecording(isPaused);
+    if (!isRecording) return;
+    
+    if (mediaRecorderRef.current) {
+      if (isPaused) {
+        mediaRecorderRef.current.resume();
+      } else {
+        mediaRecorderRef.current.pause();
+      }
+    }
     setIsPaused(!isPaused);
   };
 
-  const handleTranscriptionUpdate = (text: string) => {
-    setTranscription(prevTranscription => prevTranscription + ' ' + text);
+  const saveRecording = () => {
+    if (audioChunks.length === 0) return;
+
+    try {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+      const url = URL.createObjectURL(audioBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${meetingData?.title || 'recording'}_${new Date().toISOString()}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error saving recording:', error);
+      setError('保存录音失败，请重试');
+    }
   };
 
   return (
     <div className="flex h-screen">
+      {error && (
+        <div className="absolute top-0 left-0 right-0 bg-red-100 border border-red-400 text-red-700 px-4 py-3">
+          <strong className="font-bold">错误：</strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
+      
       {/* 左侧控制栏 */}
       <div className="w-64 bg-gray-100 p-4">
         <div className="space-y-4">
@@ -205,8 +186,7 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
             className={`w-full py-2 px-4 rounded-md text-white transition duration-200 ${
               isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'
             }`}
-            onClick={handleStartStop}
-            disabled={!wsReady}
+            onClick={isRecording ? stopRecording : startRecording}
           >
             {isRecording ? "停止" : "开始"}
           </button>
@@ -220,6 +200,17 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
             disabled={!isRecording}
           >
             {isPaused ? "继续" : "暂停"}
+          </button>
+          <button
+            className={`w-full py-2 px-4 rounded-md transition duration-200 ${
+              audioChunks.length > 0
+                ? 'bg-purple-500 text-white hover:bg-purple-600'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+            onClick={saveRecording}
+            disabled={audioChunks.length === 0}
+          >
+            保存录音
           </button>
         </div>
       </div>
@@ -237,18 +228,10 @@ const RecordingView: React.FC<RecordingViewProps> = ({ onBack }) => {
             <p className="mb-2">麦克风输入：</p>
             <div className="w-full bg-gray-200 rounded-full h-2.5">
               <div
-                className="bg-green-500 h-2.5 rounded-full"
+                className="bg-green-500 h-2.5 rounded-full transition-all duration-100"
                 style={{ width: `${(micLevel / 255) * 100}%` }}
               ></div>
             </div>
-          </div>
-          <div>
-            <p className="text-xl mb-2">实时转录：</p>
-            <textarea
-              value={transcription}
-              readOnly
-              className="w-full h-48 p-2 bg-gray-50 rounded-md resize-none"
-            />
           </div>
         </div>
       </div>

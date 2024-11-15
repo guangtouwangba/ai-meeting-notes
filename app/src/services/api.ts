@@ -246,74 +246,119 @@ export interface WebSocketHandlers {
 let socket: WebSocket | null = null;
 let isConnecting = false;
 let messageQueue: Array<{ type: string; data: any }> = [];
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_DELAY = 2000;
 
 // 初始化 WebSocket 连接
 export const initWebSocket = (handlers: WebSocketHandlers): Promise<WebSocket> => {
   return new Promise((resolve, reject) => {
-    if (socket?.readyState === WebSocket.OPEN) {
-      console.log('WebSocket connection already exists');
-      resolve(socket);
-      return;
-    }
-
-    if (isConnecting) {
-      console.log('WebSocket connection in progress');
-      // 等待连接完成
-      const checkConnection = setInterval(() => {
-        if (socket?.readyState === WebSocket.OPEN) {
-          clearInterval(checkConnection);
-          resolve(socket);
-        }
-      }, 100);
-      return;
-    }
-
-    isConnecting = true;
-    socket = new WebSocket('ws://localhost:8080/ws/recording');
-
-    socket.onopen = () => {
-      console.log('WebSocket connected');
-      isConnecting = false;
-      // 处理队列中的消息
-      while (messageQueue.length > 0) {
-        const msg = messageQueue.shift();
-        if (msg) sendMessage(msg.type, msg.data);
+    const connect = () => {
+      if (socket?.readyState === WebSocket.OPEN) {
+        console.log('WebSocket connection already exists');
+        resolve(socket);
+        return;
       }
-      resolve(socket);
-    };
 
-    socket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      console.log('Received message:', message);
+      if (isConnecting) {
+        console.log('WebSocket connection in progress');
+        return;
+      }
+
+      isConnecting = true;
+      console.log('Attempting to connect to WebSocket...');
       
-      switch (message.type) {
-        case 'recording_started':
-          handlers.onRecordingStarted?.(message.data);
-          break;
-        case 'audio_processed':
-          handlers.onAudioProcessed?.(message.data);
-          if (message.data.transcript) {
-            handlers.onTranscriptionUpdate?.(message.data.transcript);
+      try {
+        socket = new WebSocket('ws://localhost:8080/ws/recording');
+
+        socket.onopen = () => {
+          console.log('WebSocket connected successfully');
+          isConnecting = false;
+          reconnectAttempts = 0;
+          
+          // 处理队列中的消息
+          while (messageQueue.length > 0) {
+            const msg = messageQueue.shift();
+            if (msg) sendMessage(msg.type, msg.data);
           }
-          break;
-        case 'recording_stopped':
-          handlers.onRecordingStopped?.(message.data);
-          break;
+          resolve(socket);
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            console.log('Received WebSocket message:', message);
+            
+            switch (message.type) {
+              case 'recording_started':
+                handlers.onRecordingStarted?.(message.data);
+                break;
+              case 'audio_processed':
+                handlers.onAudioProcessed?.(message.data);
+                if (message.data.transcript) {
+                  handlers.onTranscriptionUpdate?.(message.data.transcript);
+                }
+                break;
+              case 'recording_stopped':
+                handlers.onRecordingStopped?.(message.data);
+                break;
+              case 'error':
+                console.error('Received error from server:', message.data);
+                break;
+              default:
+                console.warn('Unknown message type:', message.type);
+            }
+          } catch (error) {
+            console.error('Error processing WebSocket message:', error);
+          }
+        };
+
+        socket.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          isConnecting = false;
+          
+          // 尝试重连
+          if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttempts++;
+            console.log(`Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+            setTimeout(connect, RECONNECT_DELAY);
+          } else {
+            console.error('Max reconnection attempts reached');
+            reject(new Error('WebSocket connection failed after multiple attempts'));
+          }
+        };
+
+        socket.onclose = (event) => {
+          console.log('WebSocket closed:', event);
+          socket = null;
+          isConnecting = false;
+
+          if (event.code !== 1000) { // 非正常关闭
+            if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+              reconnectAttempts++;
+              console.log(`Connection closed. Attempting to reconnect (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+              setTimeout(connect, RECONNECT_DELAY);
+            } else {
+              console.error('Max reconnection attempts reached');
+              reject(new Error('WebSocket connection failed after multiple attempts'));
+            }
+          }
+        };
+
+      } catch (error) {
+        console.error('Error creating WebSocket:', error);
+        isConnecting = false;
+        reject(error);
       }
     };
 
-    socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      isConnecting = false;
-      reject(error);
-    };
-
-    socket.onclose = () => {
-      console.log('WebSocket disconnected');
-      socket = null;
-      isConnecting = false;
-    };
+    connect();
   });
+};
+
+// 检查 WebSocket 连接状态
+export const isWebSocketConnected = (): boolean => {
+  return socket?.readyState === WebSocket.OPEN;
 };
 
 // 发送消息的通用函数
@@ -324,9 +369,14 @@ const sendMessage = (type: string, data: any) => {
     return;
   }
 
-  const message = { type, data };
-  socket.send(JSON.stringify(message));
-  console.log('Sent message:', message);
+  try {
+    const message = { type, data };
+    socket.send(JSON.stringify(message));
+    console.log('Sent WebSocket message:', message);
+  } catch (error) {
+    console.error('Error sending WebSocket message:', error);
+    messageQueue.push({ type, data });
+  }
 };
 
 // 发送开始录音消息
@@ -363,7 +413,14 @@ export const sendAudioData = (audioData: Blob) => {
 // 关闭 WebSocket 连接
 export const closeWebSocket = () => {
   if (socket) {
-    socket.close();
-    socket = null;
+    try {
+      socket.close(1000, 'Normal closure');
+      socket = null;
+      isConnecting = false;
+      reconnectAttempts = 0;
+      console.log('WebSocket closed successfully');
+    } catch (error) {
+      console.error('Error closing WebSocket:', error);
+    }
   }
 };
