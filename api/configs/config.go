@@ -10,13 +10,17 @@ import (
 )
 
 type Config struct {
-	DBDriver    string `mapstructure:"DB_DRIVER"`
-	DBHost      string `mapstructure:"DB_HOST"`
-	DBPort      string `mapstructure:"DB_PORT"`
-	DBUser      string `mapstructure:"DB_USER"`
-	DBPassword  string `mapstructure:"DB_PASSWORD"`
-	DBName      string `mapstructure:"DB_NAME"`
-	StorageType string `mapstructure:"STORAGE_TYPE"`
+	DBDriver     string `mapstructure:"DB_DRIVER"`
+	DBHost       string `mapstructure:"DB_HOST"`
+	DBPort       string `mapstructure:"DB_PORT"`
+	DBUser       string `mapstructure:"DB_USER"`
+	DBPassword   string `mapstructure:"DB_PASSWORD"`
+	DBName       string `mapstructure:"DB_NAME"`
+	StorageType  string `mapstructure:"STORAGE_TYPE"`
+	BucketName   string `mapstructure:"BUCKET_NAME"`
+	AWSRegion    string `mapstructure:"AWS_REGION"`
+	AWSAccessKey string `mapstructure:"AWS_ACCESS_KEY"`
+	AWSSecretKey string `mapstructure:"AWS_SECRET_KEY"`
 }
 
 func LoadConfig() (config Config, err error) {
@@ -52,6 +56,7 @@ func LoadConfig() (config Config, err error) {
 	log.Printf("DBPassword: %s", "********") // 出于安全考虑,不打印实际密码
 	log.Printf("DBName: %s", config.DBName)
 	log.Printf("StorageType: %s", config.StorageType)
+	log.Printf("BucketName: %s", config.BucketName)
 
 	// 打印 Viper 中的所有键值对
 	for _, key := range viper.AllKeys() {
@@ -60,6 +65,10 @@ func LoadConfig() (config Config, err error) {
 		} else {
 			log.Printf("%s: ********", key)
 		}
+	}
+
+	if !isStorageTypeSupported(config.StorageType) {
+		log.Fatalf("Storage type %s is not supported", config.StorageType)
 	}
 
 	// 设置默认的StorageType
@@ -96,4 +105,17 @@ func GetConfig() Config {
 		log.Fatalf("无法加载配置: %v", err)
 	}
 	return config
+}
+
+func SupportedStorageTypes() []string {
+	return []string{"", "local", "aws"}
+}
+
+func isStorageTypeSupported(storageType string) bool {
+	for _, t := range SupportedStorageTypes() {
+		if t == storageType {
+			return true
+		}
+	}
+	return false
 }

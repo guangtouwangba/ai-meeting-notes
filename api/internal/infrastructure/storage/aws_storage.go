@@ -15,8 +15,27 @@ type AwsStorage struct {
 	s3Client   *s3.Client
 }
 
-func NewAwsStorage(bucketName string, s3Client *s3.Client) *AwsStorage {
-	return &AwsStorage{bucketName: bucketName, s3Client: s3Client}
+type AWSConfig struct {
+	Region     string
+	AccessKey  string
+	SecretKey  string
+	BucketName string
+}
+
+func NewAwsStorage(awsConfig AWSConfig) *AwsStorage {
+	client := s3.NewFromConfig(aws.Config{
+		Region: awsConfig.Region,
+		Credentials: aws.CredentialsProviderFunc(func(ctx context.Context) (aws.Credentials, error) {
+			return aws.Credentials{
+				AccessKeyID:     awsConfig.AccessKey,
+				SecretAccessKey: awsConfig.SecretKey,
+			}, nil
+		}),
+	})
+	return &AwsStorage{
+		s3Client:   client,
+		bucketName: awsConfig.BucketName,
+	}
 }
 
 func (s *AwsStorage) SaveRecording(data []byte, recordingID string) error {

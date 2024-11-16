@@ -15,6 +15,15 @@ func NewStorage(config configs.Config) (Storage, error) {
 	switch config.StorageType {
 	case "local":
 		return infrastructure.NewLocalStorage(""), nil
+	case "aws":
+		return infrastructure.NewAwsStorage(
+			infrastructure.AWSConfig{
+				Region:     config.AWSRegion,
+				AccessKey:  config.AWSAccessKey,
+				SecretKey:  config.AWSSecretKey,
+				BucketName: config.BucketName,
+			},
+		), nil
 	}
 	return nil, fmt.Errorf("invalid storage type: %s", config.StorageType)
 }
