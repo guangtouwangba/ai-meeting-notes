@@ -14,7 +14,7 @@ type Storage interface {
 func NewStorage(config configs.Config) (Storage, error) {
 	switch config.StorageType {
 	case "local":
-		return &infrastructure.LocalStorage{}, nil
+		return infrastructure.NewLocalStorage(""), nil
 	}
 	return nil, fmt.Errorf("invalid storage type: %s", config.StorageType)
 }

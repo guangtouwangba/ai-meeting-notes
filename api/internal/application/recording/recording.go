@@ -1,7 +1,7 @@
 package application
 
 import (
-	"encoding/json"
+	"encoding/base64"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/guangtouwangba/ai-meeting-notes/configs"
@@ -70,6 +70,12 @@ func (h *RecordingHandler) StartRecording(conn *websocket.Conn, data interface{}
 	h.activeRecordings[rec.ID] = rec
 	log.Printf("Created new recording session: %s for connection %v", rec.ID, conn.RemoteAddr())
 
+	// 打印当前活动的录音会话
+	log.Printf("Current active recordings: %d", len(h.activeRecordings))
+	for id, r := range h.activeRecordings {
+		log.Printf("- Recording %s: connection %v", id, r.Conn.RemoteAddr())
+	}
+
 	// 发送确认消息给客户端
 	response := recording.Message{
 		Type: "recording_started",
@@ -81,39 +87,33 @@ func (h *RecordingHandler) StartRecording(conn *websocket.Conn, data interface{}
 
 	if err := conn.WriteJSON(response); err != nil {
 		log.Printf("Error sending recording started confirmation: %v", err)
-		// 如果发送失败，清理会话
 		delete(h.activeRecordings, rec.ID)
 		return
-	}
-
-	// 打印当前活动的录音会话
-	log.Printf("Current active recordings: %d", len(h.activeRecordings))
-	for id, r := range h.activeRecordings {
-		log.Printf("- Recording %s: connection %v", id, r.Conn.RemoteAddr())
 	}
 }
 
 // ProcessAudioData 处理音频数据
 func (h *RecordingHandler) ProcessAudioData(conn *websocket.Conn, data interface{}) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
-	log.Printf("Processing audio data from connection %v", conn.RemoteAddr())
+	// 打印当前所有活动录音
+	log.Printf("Current active recordings before processing: %d", len(h.activeRecordings))
+	for id, r := range h.activeRecordings {
+		log.Printf("- Recording %s: connection %v", id, r.Conn.RemoteAddr())
+	}
 
 	// 查找对应的录音会话
 	var rec *recording.Recording
-	for id, r := range h.activeRecordings {
-		log.Printf("Checking recording %s with connection %v", id, r.Conn.RemoteAddr())
+	for _, r := range h.activeRecordings {
 		if r.Conn == conn {
 			rec = r
-			log.Printf("Found matching recording: %s", id)
 			break
 		}
 	}
 
 	if rec == nil {
-		log.Printf("No active recording found for connection %v (total active recordings: %d)",
-			conn.RemoteAddr(), len(h.activeRecordings))
+		log.Printf("No active recording found for connection %v", conn.RemoteAddr())
 		return
 	}
 
@@ -126,10 +126,17 @@ func (h *RecordingHandler) ProcessAudioData(conn *websocket.Conn, data interface
 		return
 	}
 
-	// 将音频数据转换为 []byte
-	audioBytes, err := json.Marshal(audioData)
+	// 获取 base64 音频数据
+	base64Audio, ok := audioData["audio"].(string)
+	if !ok {
+		log.Printf("Invalid audio data format: audio field not found")
+		return
+	}
+
+	// 将 base64 转换为二进制数据
+	audioBytes, err := base64.StdEncoding.DecodeString(base64Audio)
 	if err != nil {
-		log.Printf("Error marshaling audio data: %v", err)
+		log.Printf("Error decoding base64 audio: %v", err)
 		return
 	}
 
@@ -159,7 +166,7 @@ func (h *RecordingHandler) StopRecording(conn *websocket.Conn, data interface{})
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	// 查找并移除录音会话
+	// 查找录音会话
 	var recordingID string
 	var rec *recording.Recording
 	for id, r := range h.activeRecordings {
@@ -176,6 +183,9 @@ func (h *RecordingHandler) StopRecording(conn *websocket.Conn, data interface{})
 	}
 
 	log.Printf("Stopping recording session: %s", recordingID)
+
+	// 添加一个短暂的延迟，等待最后的音频数据
+	time.Sleep(500 * time.Millisecond)
 
 	// 保存元数据到数据库
 	metadata := &recording.RecordingMetadata{
@@ -195,6 +205,11 @@ func (h *RecordingHandler) StopRecording(conn *websocket.Conn, data interface{})
 
 	// 清理资源
 	delete(h.activeRecordings, recordingID)
+
+	// 确保最后一次保存
+	if cleaner, ok := h.storage.(interface{ CleanBuffer(string) }); ok {
+		defer cleaner.CleanBuffer(recordingID) // 使用 defer 确保在函数结束时清理
+	}
 
 	// 发送确认消息给客户端
 	response := recording.Message{
