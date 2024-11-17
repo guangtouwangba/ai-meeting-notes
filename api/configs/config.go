@@ -21,6 +21,7 @@ type Config struct {
 	AWSRegion    string `mapstructure:"AWS_REGION"`
 	AWSAccessKey string `mapstructure:"AWS_ACCESS_KEY"`
 	AWSSecretKey string `mapstructure:"AWS_SECRET_KEY"`
+	AWSEndpoint  string `mapstructure:"AWS_ENDPOINT"`
 }
 
 func LoadConfig() (config Config, err error) {

@@ -2,13 +2,13 @@ package main
 
 import (
 	infrastructure "github.com/guangtouwangba/ai-meeting-notes/internal/infrastructure/persistence"
+	"github.com/guangtouwangba/ai-meeting-notes/internal/interfaces/websocket"
 	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/guangtouwangba/ai-meeting-notes/configs"
 	"github.com/guangtouwangba/ai-meeting-notes/internal/domain/meeting"
 	"github.com/guangtouwangba/ai-meeting-notes/internal/interfaces/http"
-	"github.com/guangtouwangba/ai-meeting-notes/internal/interfaces/websocket"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )

@@ -1,6 +1,7 @@
 package application
 
 import (
+	"context"
 	"encoding/base64"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -93,7 +94,7 @@ func (h *RecordingHandler) StartRecording(conn *websocket.Conn, data interface{}
 }
 
 // ProcessAudioData 处理音频数据
-func (h *RecordingHandler) ProcessAudioData(conn *websocket.Conn, data interface{}) {
+func (h *RecordingHandler) ProcessAudioData(ctx context.Context, conn *websocket.Conn, data interface{}) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -141,7 +142,7 @@ func (h *RecordingHandler) ProcessAudioData(conn *websocket.Conn, data interface
 	}
 
 	// 保存音频数据
-	err = h.storage.SaveRecording(audioBytes, rec.ID)
+	err = h.storage.SaveRecording(ctx, audioBytes, rec.ID)
 	if err != nil {
 		log.Printf("Error saving recording: %v", err)
 		return

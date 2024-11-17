@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -13,7 +14,7 @@ type LocalStorage struct {
 	mu           sync.Mutex
 }
 
-func (s *LocalStorage) GetRecording(recordingID string) ([]byte, error) {
+func (s *LocalStorage) GetRecording(ctx context.Context, recordingID string) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -36,7 +37,7 @@ func NewLocalStorage(basePath string) *LocalStorage {
 	}
 }
 
-func (s *LocalStorage) SaveRecording(data []byte, recordingID string) error {
+func (s *LocalStorage) SaveRecording(ctx context.Context, data []byte, recordingID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

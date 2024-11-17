@@ -109,7 +109,7 @@ func HandleWebSocket(db *gorm.DB) gin.HandlerFunc {
 				case "audio_data":
 					log.Printf("Received audio data from %v, data size: %d bytes",
 						conn.RemoteAddr(), len(message))
-					recordingHandler.ProcessAudioData(conn, msg.Data)
+					recordingHandler.ProcessAudioData(c, conn, msg.Data)
 
 				default:
 					log.Printf("Unknown message type: %s from %v with data: %+v",
