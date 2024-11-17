@@ -6,6 +6,8 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.32.4
 	github.com/aws/aws-sdk-go-v2/config v1.28.4
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.67.0
+	github.com/aws/aws-sdk-go-v2/service/transcribe v1.41.5
+	github.com/aws/aws-sdk-go-v2/service/transcribestreaming v1.22.3
 	github.com/gin-gonic/gin v1.9.1
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/websocket v1.5.3

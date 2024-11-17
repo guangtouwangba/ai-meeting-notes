@@ -32,6 +32,10 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.4 h1:zcx9LiGWZ6i6pjdcoE9oXAB6
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.4/go.mod h1:Tp/ly1cTjRLGBBmNccFumbZ8oqpZlpdhFf80SrRh4is=
 github.com/aws/aws-sdk-go-v2/service/sts v1.33.0 h1:s7LRgBqhwLaxcocnAniBJp7gaAB+4I4vHzqUqjH18yc=
 github.com/aws/aws-sdk-go-v2/service/sts v1.33.0/go.mod h1:9XEUty5v5UAsMiFOBJrNibZgwCeOma73jgGwwhgffa8=
+github.com/aws/aws-sdk-go-v2/service/transcribe v1.41.5 h1:AfqH+i5EDdRFsYRlK+21yFOI1JceGumWd6dX9FbzrZQ=
+github.com/aws/aws-sdk-go-v2/service/transcribe v1.41.5/go.mod h1:qIdBNgrlQ8jmDrdmzY76sjvsxaYQxFIth3U00FdhXAg=
+github.com/aws/aws-sdk-go-v2/service/transcribestreaming v1.22.3 h1:/uKvFcUoykm7ZfwCGaA5RfR6IzvFXDYM72Awyd0uVII=
+github.com/aws/aws-sdk-go-v2/service/transcribestreaming v1.22.3/go.mod h1:7U5+lvRoAjQWhfCo9VxBkG+QUA3wrVmZtJk9QnOnCO4=
 github.com/aws/smithy-go v1.22.0 h1:uunKnWlcoL3zO7q+gG2Pk53joueEOsnNB28QdMsmiMM=
 github.com/aws/smithy-go v1.22.0/go.mod h1:irrKGvNn1InZwb2d7fkIRNucdfwR8R+Ts3wxYa/cJHg=
 github.com/bytedance/sonic v1.5.0/go.mod h1:ED5hyg4y6t3/9Ku1R6dU/4KyJ48DZ4jPhfY1O2AihPM=

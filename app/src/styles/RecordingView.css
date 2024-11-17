@@ -1,0 +1,19 @@
+.transcription {
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  min-height: 100px;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.transcription:empty {
+  color: #666;
+}
+
+.transcription:empty::before {
+  content: "等待转录结果...";
+} 
