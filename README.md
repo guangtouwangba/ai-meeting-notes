@@ -1,163 +1,106 @@
-# ai-meeting-notes
+# AI Meeting Notes (Local AI Meeting Assistant)
 
-# 产品需求文档 (PRD): 本地AI会议助手
+A secure, local-first meeting assistant that records, transcribes, and summarizes your meetings using advanced AI.
 
-## 1. 产品概述
+Built with **Electron** (Frontend) and **FastAPI** (Backend), this application leverages local AI models for privacy and powerful cloud APIs for advanced summarization.
 
-### 1.1 产品简介
-本地AI会议助手是一款macOS平台上的应用程序,旨在解决多语言环境下的会议沟通问题。通过先进的AI技术,该应用提供实时语音转文字、翻译和会议总结功能,帮助用户克服语言障碍,提高会议效率。
+## Key Features
 
-### 1.2 目标用户
-- 跨国公司的全球团队
-- 国际教育机构的教职员工和学生
-- 跨国研究机构的研究人员
-- 需要进行国际合作的非营利组织
+*   **Local Transcription**: Uses OpenAI's **Whisper** model running locally on your machine. No audio data is sent to the cloud for transcription, ensuring privacy and zero transcription costs.
+*   **AI Meeting Summaries**: Generates intelligent summaries, action items, and key topics using **OpenRouter** (defaulting to Google Gemini Pro 1.5).
+*   **Meeting Management**: Record audio, view real-time transcripts (future update), and organize meeting notes.
+*   **Cross-Platform Architecture**: Built on Electron, designed for extensibility.
 
-### 1.3 核心问题陈述
-在全球化背景下,不同语言背景的人在会议中可能因语言障碍而导致信息理解错误或丢失,影响工作效率和决策质量。
+## Tech Stack
 
-### 1.4 主要功能
-- 会议录音
-- 实时语音转文字
-- 多语言实时翻译
-- AI驱动的会议总结
-- 音频与文字同步
+### Frontend (`app/`)
+*   **Framework**: Electron + React
+*   **Build Tool**: Vite
+*   **Styling**: Tailwind CSS + Chakra UI
+*   **Language**: TypeScript
 
-## 2. 产品开发路线图
+### Backend (`api/`)
+*   **Framework**: FastAPI (Python)
+*   **AI Models**:
+    *   **Transcription**: `openai-whisper` (running locally)
+    *   **Summarization**: `langchain` + `ChatOpenAI` (via OpenRouter)
 
-### 2.1 第一阶段 (MVP)
-- 基本录音功能
-- 单一语言的实时转写
+## Prerequisites
 
-### 2.2 第二阶段
-- 添加2-3种主要语言的实时翻译功能
+*   **Node.js**: v16 or higher
+*   **Python**: 3.8 or higher
+*   **FFmpeg**: Required for audio processing by Whisper.
+    *   **macOS**: `brew install ffmpeg`
+    *   **Windows**: [Download FFmpeg](https://ffmpeg.org/download.html) and add to PATH.
+    *   **Linux**: `sudo apt install ffmpeg`
 
-### 2.3 第三阶段
-- 实现AI驱动的会议总结功能
+## Installation & Setup
 
-### 2.4 第四阶段
-- 开发会议库和搜索功能
+### 1. Backend Setup
 
-### 2.5 第五阶段
-- 扩展多语言支持
-- 添加高级功能
+The backend handles audio processing and AI interactions.
 
-## 3. 功能需求
+1.  Navigate to the `api` directory:
+    ```bash
+    cd api
+    ```
 
-### 3.1 录音功能
-- 支持从内置麦克风、外接麦克风和系统音频进行录音
-- 提供开始、暂停和停止录音的控制
-- 自动检测静音以优化存储
+2.  (Optional but recommended) Create a virtual environment:
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
 
-### 3.2 实时语音转文字
-- 支持多种语言的实时语音识别
-- 显示带时间戳的实时转写文本
-- 提供基本的文本编辑功能
+3.  Install Python dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-### 3.3 实时翻译
-- 支持主要语言间的实时翻译
-- 显示原文和译文的同步字幕
-- 允许用户选择源语言和目标语言
+4.  Start the backend server:
+    ```bash
+    python main.py
+    ```
+    The server will start on `http://0.0.0.0:8000`.
 
-### 3.4 AI会议总结
-- 自动生成会议要点摘要
-- 识别关键决策和行动项
-- 提供不同长度的总结选项(简短、中等、详细)
+### 2. Frontend Setup
 
-### 3.5 音频与文字同步
-- 允许用户通过文本快速定位音频位置
-- 在音频播放时高亮显示对应的文本
+The frontend provides the user interface.
 
-### 3.6 会议管理
-- 创建、编辑和删除会议
-- 设置会议标题、日期、时间和参与者
-- 管理录音、转写和总结的存储和组织
+1.  Navigate to the `app` directory:
+    ```bash
+    cd app
+    ```
 
-### 3.7 搜索功能
-- 跨会议内容的全文搜索
-- 按日期、参与者或关键词过滤搜索结果
+2.  Install Node.js dependencies:
+    ```bash
+    npm install
+    ```
 
-## 4. 用户界面设计
+3.  Start the Electron application in development mode:
+    ```bash
+    npm run electron-dev
+    ```
 
-### 4.1 主仪表板
-- 快速操作区(新建会议、快速录音)
-- 即将举行的会议列表
-- 最近录音列表
-- 搜索栏
-- 侧边栏导航(仪表板、会议、录音、设置)
+## Usage
 
-### 4.2 新建会议页面
-- 会议标题输入框
-- 主要语言选择下拉菜单
-- 支持语言多选框
-- 音频源选择下拉菜单
-- AI转写设置选项
-- 可选会议详情(日期、时间、参与者)
-- 开始会议按钮
+1.  **Start the Backend**: Ensure `python main.py` is running in a terminal.
+2.  **Launch the App**: Run `npm run electron-dev` in the `app` folder.
+3.  **Record a Meeting**:
+    *   Click "New Meeting" or "Record" in the app.
+    *   The app will capture audio.
+4.  **Transcribe**:
+    *   Once recording stops, the audio is processed locally using Whisper.
+5.  **Summarize**:
+    *   To generate a summary, you will need an **OpenRouter API Key**.
+    *   Enter your key when prompted (or configure it in the settings if available).
+    *   The app will send the transcript text (not audio) to OpenRouter to generate a summary using Gemini Pro 1.5.
 
-### 4.3 活动会议/录音页面
-- 录音控制(开始、暂停、停止)
-- 实时转写显示区
-- 实时翻译显示区(如启用)
-- 音频源切换选项
-- 结束会议按钮
+## Configuration
 
-### 4.4 会议回放界面
-- 音频播放控制
-- 同步的转写文本显示
-- 翻译文本显示(如可用)
-- 会议总结显示
-- 编辑和导出选项
+*   **API Configuration**:
+    *   The frontend defaults to connecting to `http://localhost:3000` (via proxy) or `http://localhost:8000` (direct).
+    *   OpenRouter API Key is required for summarization.
 
-## 5. 技术规格
+## License
 
-### 5.1 开发平台
-- macOS原生应用程序
-
-### 5.2 核心技术
-- 语音识别API(如Google Speech-to-Text或AWS Transcribe)
-- 机器翻译API(如Google Translate或DeepL API)
-- 自然语言处理用于会议总结(如OpenAI GPT)
-- 本地数据存储(Core Data或SQLite)
-
-### 5.3 性能要求
-- 实时转写延迟<500ms
-- 翻译延迟<1秒
-- 支持至少2小时的连续录音
-- 会议总结生成时间<会议时长的10%
-
-## 6. 数据安全与隐私
-
-- 所有会议数据默认存储在本地
-- 提供端到端加密选项
-- 遵守GDPR和CCPA等隐私法规
-- 提供数据导出和删除功能
-
-## 7. 可访问性
-
-- 支持macOS VoiceOver
-- 符合WCAG 2.1 AA级标准
-- 提供键盘快捷键用于所有主要功能
-- 支持高对比度模式
-
-## 8. 未来扩展计划
-
-- 支持Windows和移动平台
-- 与主流视频会议工具集成
-- 高级AI功能(如说话者情绪分析)
-- 团队协作功能
-
-## 9. 成功指标
-
-- 用户留存率
-- 会议转写准确率
-- 翻译质量评分
-- 用户满意度调查结果
-- 每日活跃用户数
-
-## 10. 发布计划
-
-- Alpha版: 内部测试版,包含核心录音和转写功能
-- Beta版: 限量外部用户测试,添加基本翻译功能
-- V1.0: 公开发布,包含核心功能集
-- 后续版本: 每季度发布一次重大更新,每月发布小型更新和错误修复
+[MIT License](LICENSE)
