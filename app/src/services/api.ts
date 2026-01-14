@@ -148,7 +148,7 @@ export interface CreateMeetingRequest {
   transcriber_settings: TranscriberSettings;
 }
 
-const API_BASE_URL = '/api'; // 使用相对路径
+const API_BASE_URL = API_HOST; // Use absolute URL for now
 
 export const createMeeting = async (meetingData: CreateMeetingRequest): Promise<any> => {
   try {
@@ -212,10 +212,10 @@ export const getMeetings = async (page: number = 1, pageSize: number = 20): Prom
   }
 };
 
-export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
+export const transcribeAudio = async (audioBlob: Blob, apiKey?: string): Promise<string> => {
   try {
     const formData = new FormData();
-    formData.append('audio', audioBlob, 'audio.wav');
+    formData.append('file', audioBlob, 'audio.wav'); // Changed 'audio' to 'file' to match backend
 
     const response = await fetch(`${API_BASE_URL}/transcribe`, {
       method: 'POST',
@@ -233,6 +233,25 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
     console.error('音频转录失败:', error);
     throw error;
   }
+};
+
+export const generateSummary = async (text: string, apiKey: string): Promise<string> => {
+    const formData = new FormData();
+    formData.append('text', text);
+    formData.append('api_key', apiKey);
+    formData.append('model', "google/gemini-pro-1.5"); // Hardcoded for now, or make parametric
+
+    const response = await fetch(`${API_BASE_URL}/summary`, {
+        method: 'POST',
+        body: formData,
+    });
+
+    if (!response.ok) {
+        throw new Error(`Summary generation failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.summary;
 };
 
 // WebSocket 消息类型定义

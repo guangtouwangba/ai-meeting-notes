@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Heading, Text, Button, VStack, HStack } from '@chakra-ui/react';
 import { Meeting } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import AudioRecorder from './AudioRecorder';
+import SummaryView from './Summary/SummaryView';
 
 interface MeetingViewProps {
   meeting: Meeting;
@@ -10,9 +12,10 @@ interface MeetingViewProps {
 
 const MeetingView: React.FC<MeetingViewProps> = ({ meeting, onBack }) => {
   const navigate = useNavigate();
+  const [transcript, setTranscript] = useState<string>('');
 
-  const handleStartRecording = () => {
-    navigate('/recording');
+  const handleTranscriptionUpdate = (newText: string) => {
+    setTranscript(prev => prev + '\n' + newText);
   };
 
   return (
@@ -20,31 +23,25 @@ const MeetingView: React.FC<MeetingViewProps> = ({ meeting, onBack }) => {
       <VStack align="stretch" spacing={6}>
         <HStack justify="space-between">
           <Button onClick={onBack} variant="outline">
-            返回
-          </Button>
-          <Button colorScheme="blue" onClick={handleStartRecording}>
-            开始录制
+            Back
           </Button>
         </HStack>
 
         <Heading size="lg">{meeting.title}</Heading>
 
-        <Box>
-          <Text fontWeight="bold" mb={2}>会议详情：</Text>
-          <Text>描述：{meeting.description || '无'}</Text>
-          <Text>源语言：{meeting.source_lang}</Text>
-          <Text>目标语言：{meeting.target_lang}</Text>
-          <Text>开始时间：{new Date(meeting.start_time).toLocaleString()}</Text>
-          <Text>结束时间：{new Date(meeting.end_time).toLocaleString()}</Text>
-          <Text>发言人：{meeting.speaker || '未指定'}</Text>
-        </Box>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white p-4 rounded shadow">
+             <Text fontWeight="bold" mb={4}>Real-time Transcription</Text>
+             <AudioRecorder onTranscriptionUpdate={handleTranscriptionUpdate} />
+             <div className="mt-4 p-4 bg-gray-50 rounded h-96 overflow-y-auto whitespace-pre-wrap border">
+               {transcript || 'Waiting for audio...'}
+             </div>
+          </div>
 
-        <Box>
-          <Text fontWeight="bold" mb={2}>转录设置：</Text>
-          <Text>实时翻译：{meeting.transcriber_settings.realTimeTranslation ? '是' : '否'}</Text>
-          <Text>说话人识别：{meeting.transcriber_settings.speakerIdentification ? '是' : '否'}</Text>
-          <Text>专业术语识别：{meeting.transcriber_settings.technicalTermRecognition ? '是' : '否'}</Text>
-        </Box>
+          <div className="bg-white p-4 rounded shadow">
+            <SummaryView transcript={transcript} />
+          </div>
+        </div>
       </VStack>
     </Box>
   );

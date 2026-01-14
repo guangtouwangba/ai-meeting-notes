@@ -58,7 +58,7 @@ const AudioRecorder: React.FC<AudioRecorderProps> = ({ onTranscriptionUpdate }) 
       onTranscriptionUpdate(transcription);
     } catch (error) {
       console.error('转录错误:', error);
-      showToast("转录失败", `错误: ${error instanceof Error ? error.message : String(error)}`, "error");
+      // Don't show toast for every chunk, it's annoying
     }
   };
 
