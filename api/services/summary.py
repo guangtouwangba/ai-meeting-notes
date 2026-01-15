@@ -1,6 +1,7 @@
 from langchain_openai import ChatOpenAI
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnableSequence
+from langchain_core.output_parsers import StrOutputParser
 
 def generate_summary(text: str, api_key: str, model: str = "google/gemini-pro-1.5"):
     if not api_key:
@@ -26,6 +27,6 @@ def generate_summary(text: str, api_key: str, model: str = "google/gemini-pro-1.
     """
 
     prompt = PromptTemplate(template=template, input_variables=["transcript"])
-    chain = LLMChain(llm=llm, prompt=prompt)
+    chain = prompt | llm | StrOutputParser()
 
-    return chain.run(transcript=text)
+    return chain.invoke({"transcript": text})

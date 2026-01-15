@@ -1,8 +1,8 @@
 # Tasks
 
-- [ ] Install `python-multipart` or check if `fastapi` websockets require `websockets` lib <!-- id: 0 -->
-- [ ] Create `api/services/realtime.py` with buffering logic <!-- id: 1 -->
-- [ ] Add `/ws/recording` endpoint to `api/main.py` <!-- id: 2 -->
+- [x] Install `python-multipart` or check if `fastapi` websockets require `websockets` lib <!-- id: 0 -->
+- [x] Create `api/services/realtime.py` with buffering logic <!-- id: 1 -->
+- [x] Add `/ws/recording` endpoint to `api/main.py` <!-- id: 2 -->
 - [ ] Create `native/audio-bridge` directory and `Package.swift` <!-- id: 7 -->
 - [ ] Add `whisper.cpp` submodule and compile `libwhisper.a` <!-- id: 12 -->
 - [ ] Implement `WhisperTranscriber.swift` with C-Bridging <!-- id: 13 -->

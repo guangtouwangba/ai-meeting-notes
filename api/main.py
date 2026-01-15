@@ -1,7 +1,8 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from api.services.transcription import transcriber
 from api.services.summary import generate_summary
+from api.services.realtime import manager
 import os
 import aiofiles
 import shutil
@@ -51,6 +52,10 @@ async def summarize_text(
         return {"summary": summary}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.websocket("/ws/recording")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
 
 if __name__ == "__main__":
     import uvicorn
